@@ -1,0 +1,28 @@
+﻿# Donnees et modeles (geres par DVC)
+data/raw/
+data/processed/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+models/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Frontend
+node_modules/
+dist/
+build/
+
+# Divers
+.env
+.DS_Store
