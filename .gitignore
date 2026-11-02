@@ -26,3 +26,5 @@ build/
 # Divers
 .env
 .DS_Store
+
+inspection_sdnet.txt
