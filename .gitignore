@@ -1,6 +1,5 @@
 ﻿# Donnees et modeles (geres par DVC)
-data/raw/
-data/processed/
+data/raw/SDNET2018/
 *.onnx
 *.pt
 *.pth
