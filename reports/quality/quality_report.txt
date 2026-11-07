@@ -1,0 +1,22 @@
+=== QUALITE DES DONNEES SDNET2018 ===
+Images dans l'index : 56092
+Images corrompues : 0
+
+Dimensions (largeur, hauteur) :
+  (256, 256) : 56092
+Modes couleur : RGB=56092
+
+Groupes de doublons exacts (meme contenu) : 13
+Fichiers en trop (a supprimer si on dedoublonne) : 13
+Groupes avec des etiquettes differentes : 2
+Groupes repartis sur plusieurs splits (fuite) : 0
+  D/CD/7039-110.jpg[val,1] | D/CD/7039-110_2.jpg[val,1]
+  D/CD/7039-111.jpg[val,1] | D/CD/7039-111_2.jpg[val,1]
+  D/CD/7039-112.jpg[val,1] | D/UD/7039-112_2.jpg[val,0]
+  D/CD/7039-113.jpg[val,1] | D/CD/7039-113_2.jpg[val,1]
+  D/UD/7053-17.jpg[train,0] | D/UD/7053-17_2.jpg[train,0]
+  D/UD/7053-18.jpg[train,0] | D/UD/7053-18_2.jpg[train,0]
+  D/UD/7053-35.jpg[train,0] | D/UD/7053-35_2.jpg[train,0]
+  D/UD/7053-36.jpg[train,0] | D/UD/7053-36_2.jpg[train,0]
+  D/UD/7053-53.jpg[train,0] | D/UD/7053-53_2.jpg[train,0]
+  D/UD/7053-54.jpg[train,0] | D/UD/7053-54_2.jpg[train,0]
