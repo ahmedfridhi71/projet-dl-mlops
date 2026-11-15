@@ -7,5 +7,5 @@ jobs:
   placeholder:
     runs-on: ubuntu-latest
     steps:
-      - name: Réservé
-        run: echo "Construction Docker : à compléter en Phase 5"
+      - name: Reserve
+        run: echo "Construction Docker a completer en Phase 5"
