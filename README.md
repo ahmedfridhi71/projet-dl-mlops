@@ -1,4 +1,3 @@
-
 # Détection de fissures du béton (SDNET2018)
 
 [![CI tests](https://github.com/ahmedfridhi71/projet-dl-mlops/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/ahmedfridhi71/projet-dl-mlops/actions/workflows/ci-tests.yml)
@@ -26,24 +25,32 @@ d'origine**, séparément pour chaque surface.
 ## Structure du projet
 
 ```
-.github/workflows/   CI (tests) et build Docker (à compléter)
-data/                données, versionnées par DVC (non présentes sur GitHub)
-notebooks/           exploration du dataset
-reports/             figures et rapport de qualité des données
-src/data/            index et découpage, contrôle qualité
-tests/               tests automatiques (pytest)
-backend/             API FastAPI (à venir)
-frontend/            interface React (à venir)
+.github/workflows/    CI (tests) et build Docker (à compléter)
+data/                 données, versionnées par DVC (non présentes sur GitHub)
+notebooks/            exploration du dataset
+reports/              figures et rapport de qualité des données
+src/data/             index et découpage, contrôle qualité
+tests/                tests automatiques (pytest)
+backend/              API FastAPI (à venir)
+frontend/             interface React (à venir)
+requirements.txt      dépendances : données, tests, DVC
+requirements-gpu.txt  PyTorch avec CUDA 12.8
 ```
 
 ## Installation
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install dvc pandas numpy pillow matplotlib pytest pyyaml
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Un fichier `requirements.txt` figé sera ajouté avec le pipeline d'entraînement.
+Pour l'entraînement sur GPU (PyTorch avec CUDA 12.8) :
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-gpu.txt
+```
+
+Environnement testé : Python 3.11, PyTorch 2.11.0, GPU NVIDIA RTX 4050 Laptop (6 Go).
 
 ## Récupérer les données
 
@@ -80,14 +87,14 @@ et `data/processed.dvc`).
 
 ## Avancement
 
-| Phase | Contenu                                                      | État    |
-| ----- | ------------------------------------------------------------ | -------- |
-| 1     | Données, index, exploration, DVC, CI minimal                | Fait     |
-| 2     | Chargement des données, métriques, baseline ResNet, MLflow | À venir |
-| 3     | Modèles avancés, augmentation, Grad-CAM                    | À venir |
-| 4     | Export ONNX, API FastAPI, interface React                    | À venir |
-| 5     | Docker, docker-compose, CI/CD complet                        | À venir |
-| 6     | Rapport et soutenance                                        | À venir |
+| Phase | Contenu                                                      | État                                |
+| ----- | ------------------------------------------------------------ | ------------------------------------ |
+| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                 |
+| 2     | Chargement des données, métriques, baseline ResNet, MLflow | En cours (PyTorch et GPU installés) |
+| 3     | Modèles avancés, augmentation, Grad-CAM                    | À venir                             |
+| 4     | Export ONNX, API FastAPI, interface React                    | À venir                             |
+| 5     | Docker, docker-compose, CI/CD complet                        | À venir                             |
+| 6     | Rapport et soutenance                                        | À venir                             |
 
 ## Référence
 
