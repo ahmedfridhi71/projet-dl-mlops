@@ -17,9 +17,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - name: Installer les outils de test
-        run: pip install pytest pyyaml
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
 
       - name: Vérifier la syntaxe du code
         run: python -m compileall -q src
