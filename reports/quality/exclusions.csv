@@ -1,0 +1,16 @@
+groupe,path,label,split,motif
+3ceb303f,D/UD/7053-36_2.jpg,0,train,doublon exact
+42975e23,D/UD/7053-17_2.jpg,0,train,doublon exact
+487b16db,D/UD/7053-89_2.jpg,0,train,doublon exact
+4ff99cf5,D/CD/7039-110_2.jpg,1,val,doublon exact
+5478da25,D/UD/7053-35_2.jpg,0,train,doublon exact
+6becf2c4,D/UD/7053-18_2.jpg,0,train,doublon exact
+70ac3b72,D/UD/7053-53_2.jpg,0,train,doublon exact
+85681101,D/CD/7039-112.jpg,1,val,etiquettes contradictoires
+85681101,D/UD/7039-112_2.jpg,0,val,etiquettes contradictoires
+965d9401,D/UD/7053-54_2.jpg,0,train,doublon exact
+b8a52905,D/CD/7039-111_2.jpg,1,val,doublon exact
+bd7dcba2,W/CW/7074-105.jpg,1,train,etiquettes contradictoires
+bd7dcba2,W/UW/7074-105_2.jpg,0,train,etiquettes contradictoires
+e7c4de25,D/CD/7039-113_2.jpg,1,val,doublon exact
+f7b2bc79,D/UD/7053-90_2.jpg,0,train,doublon exact
