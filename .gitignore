@@ -1,10 +1,10 @@
-﻿# Donnees et modeles (geres par DVC)
+# Donnees et modeles (geres par DVC)
 data/raw/SDNET2018/
 *.onnx
 *.pt
 *.pth
 *.ckpt
-models/
+/models/
 
 # Python
 __pycache__/
