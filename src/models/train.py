@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from src.data.loaders import get_loaders
-from src.models.baseline import build_resnet18
+from src.models.architecture import build_model  # NOUVEAU (changement 1)
 from src.models.evaluate import predict
 from src.utils.metrics import compute_metrics
 
@@ -43,6 +43,8 @@ def save_history(rows, path):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--run-name", required=True)
+    p.add_argument("--model", default="resnet18",
+                   choices=["resnet18", "efficientnet_v2_s", "convnext_tiny"])  # NOUVEAU (changement 2)
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--batch-size", type=int, default=32)
@@ -57,6 +59,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Appareil :", device)
+    print("Modele :", args.model)
     print("Echantillonnage equilibre :", args.balanced)
 
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
@@ -65,7 +68,7 @@ def main():
     train_loader, val_loader, _ = get_loaders(
         batch_size=args.batch_size, balanced=args.balanced
     )
-    model = build_resnet18().to(device)
+    model = build_model(args.model).to(device)  # NOUVEAU (changement 3)
     class_weights = torch.tensor([1.0, args.pos_weight], device=device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -73,7 +76,7 @@ def main():
 
     with mlflow.start_run(run_name=args.run_name):
         mlflow.log_params({
-            "model": "resnet18",
+            "model": args.model,  # NOUVEAU : le vrai nom du modele
             "pretrained": True,
             "epochs": args.epochs,
             "lr": args.lr,
