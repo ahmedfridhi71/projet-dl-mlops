@@ -4,7 +4,6 @@ data/raw/SDNET2018/
 *.pt
 *.pth
 *.ckpt
-/models/
 
 # Python
 __pycache__/
