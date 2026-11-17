@@ -1,0 +1,6 @@
+﻿Meilleur modele (PR-AUC validation);ConvNeXt-Tiny;0.9
+
+Modele;Meilleure epoque;PR-AUC;Recall;Precision;F1;TP;FN;FP;TN
+ResNet-18 (baseline);3;0.882;0.713;0.892;0.792;995;401;121;7012
+EfficientNet-V2-S;5;0.893;0.779;0.864;0.819;1088;308;172;6961
+ConvNeXt-Tiny;2;0.9;0.597;0.981;0.742;833;563;16;7117
