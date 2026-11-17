@@ -1,4 +1,5 @@
 import argparse
+import csv
 import time
 from pathlib import Path
 
@@ -30,27 +31,43 @@ def train_one_epoch(model, loader, criterion, optimizer, scaler, device, max_bat
     return loss_sum / n
 
 
+def save_history(rows, path):
+    """Ecrit une ligne par epoque dans un fichier CSV (reecrit a chaque epoque)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument("--run-name", required=True)
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--batch-size", type=int, default=32)
-    p.add_argument("--pos-weight", type=float, default=1.0)  # NOUVEAU (changement 1)
+    p.add_argument("--pos-weight", type=float, default=1.0)
+    p.add_argument("--balanced", action="store_true")
     p.add_argument("--max-batches", type=int, default=None)
-    p.add_argument("--run-name", default="resnet18-baseline")
-    p.add_argument("--out", default="models/baseline.pt")
+    p.add_argument("--out", default=None)
     args = p.parse_args()
+
+    out = Path(args.out) if args.out else Path("models") / f"{args.run_name}.pt"
+    history_path = Path("reports/metrics") / f"{args.run_name}_epochs.csv"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Appareil :", device)
+    print("Echantillonnage equilibre :", args.balanced)
 
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
     mlflow.set_experiment("baseline-sdnet")
 
-    train_loader, val_loader, _ = get_loaders(batch_size=args.batch_size)
+    train_loader, val_loader, _ = get_loaders(
+        batch_size=args.batch_size, balanced=args.balanced
+    )
     model = build_resnet18().to(device)
-    class_weights = torch.tensor([1.0, args.pos_weight], device=device)  # NOUVEAU (changement 2)
-    criterion = nn.CrossEntropyLoss(weight=class_weights)                # NOUVEAU (changement 2)
+    class_weights = torch.tensor([1.0, args.pos_weight], device=device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
@@ -63,12 +80,14 @@ def main():
             "batch_size": args.batch_size,
             "optimizer": "adam",
             "loss": "cross_entropy",
-            "pos_weight": args.pos_weight,  # NOUVEAU (changement 3)
+            "pos_weight": args.pos_weight,
+            "balanced": args.balanced,
             "fp16": device.type == "cuda",
             "max_batches": args.max_batches,
         })
 
-        best = -1.0
+        rows = []
+        best, best_epoch, best_m = -1.0, 0, None
         for epoch in range(1, args.epochs + 1):
             t0 = time.time()
             loss = train_one_epoch(model, train_loader, criterion, optimizer,
@@ -76,9 +95,11 @@ def main():
             y_true, y_score = predict(model, val_loader, device)
             m = compute_metrics(y_true, y_score)
             duree = time.time() - t0
+
             print(f"Epoque {epoch} | loss {loss:.4f} | val recall {m['recall']:.3f} "
                   f"| precision {m['precision']:.3f} | f1 {m['f1']:.3f} "
                   f"| PR-AUC {m['pr_auc']:.3f} | {duree:.0f}s")
+
             mlflow.log_metrics({
                 "train_loss": loss,
                 "val_recall": m["recall"],
@@ -87,14 +108,41 @@ def main():
                 "val_pr_auc": m["pr_auc"],
                 "epoch_time_s": duree,
             }, step=epoch)
+
+            rows.append({
+                "epoch": epoch,
+                "train_loss": round(loss, 4),
+                "val_recall": round(float(m["recall"]), 4),
+                "val_precision": round(float(m["precision"]), 4),
+                "val_f1": round(float(m["f1"]), 4),
+                "val_pr_auc": round(float(m["pr_auc"]), 4),
+                "tp": int(m["tp"]),
+                "fp": int(m["fp"]),
+                "fn": int(m["fn"]),
+                "tn": int(m["tn"]),
+                "epoch_time_s": round(duree),
+            })
+            save_history(rows, history_path)
+
             if m["pr_auc"] > best:
-                best = m["pr_auc"]
-                Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-                torch.save(model.state_dict(), args.out)
+                best, best_epoch, best_m = m["pr_auc"], epoch, m
+                out.parent.mkdir(parents=True, exist_ok=True)
+                torch.save(model.state_dict(), out)
                 print("  -> meilleur modele sauvegarde")
 
-        mlflow.log_metric("best_val_pr_auc", best)
-        mlflow.log_artifact(args.out)
+        mlflow.log_metrics({
+            "best_epoch": best_epoch,
+            "best_val_recall": float(best_m["recall"]),
+            "best_val_precision": float(best_m["precision"]),
+            "best_val_f1": float(best_m["f1"]),
+            "best_val_pr_auc": float(best),
+        })
+        mlflow.log_artifact(str(out))
+        mlflow.log_artifact(str(history_path))
+
+        print(f"Meilleure epoque : {best_epoch} (PR-AUC {best:.3f})")
+        print("Historique :", history_path)
+        print("Modele     :", out)
 
 
 if __name__ == "__main__":
