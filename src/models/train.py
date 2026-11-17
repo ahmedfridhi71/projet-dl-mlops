@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from src.data.loaders import get_loaders
-from src.models.architecture import build_model  # NOUVEAU (changement 1)
+from src.models.architecture import build_model
 from src.models.evaluate import predict
 from src.utils.metrics import compute_metrics
 
@@ -44,13 +44,14 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--run-name", required=True)
     p.add_argument("--model", default="resnet18",
-                   choices=["resnet18", "efficientnet_v2_s", "convnext_tiny"])  # NOUVEAU (changement 2)
+                   choices=["resnet18", "efficientnet_v2_s", "convnext_tiny"])
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--pos-weight", type=float, default=1.0)
     p.add_argument("--balanced", action="store_true")
     p.add_argument("--max-batches", type=int, default=None)
+    p.add_argument("--num-workers", type=int, default=0)  # NOUVEAU (changement 1)
     p.add_argument("--out", default=None)
     args = p.parse_args()
 
@@ -61,14 +62,17 @@ def main():
     print("Appareil :", device)
     print("Modele :", args.model)
     print("Echantillonnage equilibre :", args.balanced)
+    print("Processus de lecture des images :", args.num_workers)
 
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
     mlflow.set_experiment("baseline-sdnet")
 
     train_loader, val_loader, _ = get_loaders(
-        batch_size=args.batch_size, balanced=args.balanced
+        batch_size=args.batch_size,
+        balanced=args.balanced,
+        num_workers=args.num_workers,  # NOUVEAU (changement 2)
     )
-    model = build_model(args.model).to(device)  # NOUVEAU (changement 3)
+    model = build_model(args.model).to(device)
     class_weights = torch.tensor([1.0, args.pos_weight], device=device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -76,7 +80,7 @@ def main():
 
     with mlflow.start_run(run_name=args.run_name):
         mlflow.log_params({
-            "model": args.model,  # NOUVEAU : le vrai nom du modele
+            "model": args.model,
             "pretrained": True,
             "epochs": args.epochs,
             "lr": args.lr,
@@ -87,6 +91,7 @@ def main():
             "balanced": args.balanced,
             "fp16": device.type == "cuda",
             "max_batches": args.max_batches,
+            "num_workers": args.num_workers,
         })
 
         rows = []
