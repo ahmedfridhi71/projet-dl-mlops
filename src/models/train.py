@@ -35,6 +35,7 @@ def main():
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--batch-size", type=int, default=32)
+    p.add_argument("--pos-weight", type=float, default=1.0)  # NOUVEAU (changement 1)
     p.add_argument("--max-batches", type=int, default=None)
     p.add_argument("--run-name", default="resnet18-baseline")
     p.add_argument("--out", default="models/baseline.pt")
@@ -48,7 +49,8 @@ def main():
 
     train_loader, val_loader, _ = get_loaders(batch_size=args.batch_size)
     model = build_resnet18().to(device)
-    criterion = nn.CrossEntropyLoss()
+    class_weights = torch.tensor([1.0, args.pos_weight], device=device)  # NOUVEAU (changement 2)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)                # NOUVEAU (changement 2)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
@@ -61,6 +63,7 @@ def main():
             "batch_size": args.batch_size,
             "optimizer": "adam",
             "loss": "cross_entropy",
+            "pos_weight": args.pos_weight,  # NOUVEAU (changement 3)
             "fp16": device.type == "cuda",
             "max_batches": args.max_batches,
         })
