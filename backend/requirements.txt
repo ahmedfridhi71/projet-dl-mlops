@@ -1,0 +1,13 @@
+# Dépendances du backend.
+# Dans Docker, torch et torchvision seront installés en version CPU
+# (index https://download.pytorch.org/whl/cpu) pour garder une image légère.
+fastapi
+uvicorn[standard]
+python-multipart
+onnxruntime
+pillow
+numpy
+torch
+torchvision
+# Tests uniquement : TestClient de FastAPI a besoin de httpx.
+httpx

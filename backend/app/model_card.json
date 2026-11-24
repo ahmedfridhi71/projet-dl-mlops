@@ -1,0 +1,16 @@
+{
+  "model": "convnext-tiny",
+  "architecture": "torchvision convnext_tiny, classifier[2] = Linear(768, 2)",
+  "format": "onnx",
+  "input_size": [3, 224, 224],
+  "classes": {"0": "sans fissure", "1": "fissure"},
+  "threshold": 0.05,
+  "metrics": {
+    "validation": {"recall": 0.867, "precision": 0.707, "f1": 0.779, "pr_auc": 0.900},
+    "test": {"recall": 0.832, "precision": 0.642, "f1": 0.724, "pr_auc": 0.857}
+  },
+  "sources": {
+    "validation": "reports/metrics/convnext-tiny-r85_val.json",
+    "test": "reports/metrics/convnext-tiny-final_test.json"
+  }
+}
