@@ -29,9 +29,10 @@ d'origine**, séparément pour chaque surface.
 data/                 données, versionnées par DVC (non présentes sur GitHub)
 models/               poids des modèles, versionnés par DVC (fichiers .dvc dans Git)
 notebooks/            exploration du dataset
-reports/              figures et rapport de qualité des données
+docs/                 pitch de mi-parcours (PDF)
+reports/              figures, rapport de qualité des données, résultats (reports/metrics)
 src/data/             index et découpage, contrôle qualité, Dataset, transforms, loaders
-src/models/           ResNet-18, entraînement, évaluation, analyse du seuil
+src/models/           ResNet-18, EfficientNet-V2-S, ConvNeXt-Tiny, entraînement, seuils, comparaisons
 src/utils/            métriques de classification
 tests/                tests automatiques (pytest)
 backend/              API FastAPI (à venir)
@@ -84,8 +85,21 @@ et `data/processed.dvc`).
 # Entraîner la baseline (suivi MLflow automatique)
 .\.venv\Scripts\python.exe -m src.models.train --epochs 5 --run-name resnet18-baseline
 
+# Entraîner un autre modèle (resnet18, efficientnet_v2_s, convnext_tiny)
+.\.venv\Scripts\python.exe -m src.models.train --model efficientnet_v2_s --run-name efficientnet-v2-s --num-workers 4
+
+# Mesurer la vitesse et la mémoire GPU des modèles
+.\.venv\Scripts\python.exe -m src.models.bench 32
+
 # Analyser le seuil de décision d'un modèle sauvegardé
-.\.venv\Scripts\python.exe -m src.models.threshold_analysis --weights models/baseline.pt
+.\.venv\Scripts\python.exe -m src.models.threshold_analysis --weights models/efficientnet-v2-s.pt --model efficientnet_v2_s --name efficientnet-v2-s
+
+# Mesurer un modèle par surface à un seuil donné (JSON)
+.\.venv\Scripts\python.exe -m src.models.export_metrics --weights models/efficientnet-v2-s.pt --model efficientnet_v2_s --name efficientnet-v2-s-r80 --split val --threshold 0.4
+
+# Tableaux de comparaison (CSV)
+.\.venv\Scripts\python.exe -m src.models.compare_archs
+.\.venv\Scripts\python.exe -m src.models.compare_surfaces
 
 # Ouvrir l'interface MLflow (http://127.0.0.1:5000)
 .\.venv\Scripts\mlflow.exe ui --backend-store-uri sqlite:///mlflow.db
@@ -106,26 +120,56 @@ et `data/processed.dvc`).
 
 ## Entraînement et suivi des essais
 
-- Baseline : ResNet-18 pré-entraîné sur ImageNet, nouvelle tête à 2 sorties, Adam (lr 1e-4),
-  précision mixte FP16, 5 époques (environ 4 minutes par époque sur GPU).
-- Résultat sur la validation (seuil 0,5) : PR-AUC 0,882, recall 0,71, précision 0,89.
-- Modèle versionné avec DVC : le pointeur `models/baseline.pt.dvc` est dans Git,
-  le fichier de poids est dans le remote DVC.
-- Chaque essai est suivi par MLflow (expérience `baseline-sdnet`) : réglages, courbes par
-  époque, modèle et commit du code.
-- Une loss pondérée (poids 3 sur la classe fissure) a été testée : elle déplace le seuil de
-  décision sans améliorer la PR-AUC. Le seuil sera choisi sur la validation à la fin.
+Tous les modèles sont entraînés avec le même `train.py` (Adam lr 1e-4, batch 32, FP16,
+5 époques) : seule l'option `--model` change. La meilleure époque est choisie par la
+PR-AUC de validation. Chaque essai est suivi par MLflow (expérience `baseline-sdnet`) et
+écrit son historique dans `reports/metrics/<essai>_epochs.csv`.
+
+### Phase 2 : baseline et déséquilibre de classes
+
+- Baseline : ResNet-18 pré-entraîné sur ImageNet, nouvelle tête à 2 sorties.
+- Modèle versionné avec DVC : le pointeur `models/baseline.pt.dvc` est dans Git, le
+  fichier de poids est dans le remote DVC.
+- Cinq solutions au déséquilibre (15 % de fissures) : mesure adaptée, loss pondérée
+  (poids 3), échantillonnage équilibré, augmentation, choix du seuil. Les trois
+  premières ne font que déplacer le point recall / précision : la PR-AUC reste proche
+  de 0,88 (baseline 0,882, poids 3 : 0,880, équilibré : 0,879).
+
+### Phase 3.1 : comparaison de trois architectures
+
+Validation, meilleure époque, seuil 0,5 :
+
+| Modèle           | Époque | PR-AUC | Recall | Précision | F1    |
+| ----------------- | ------- | ------ | ------ | ---------- | ----- |
+| ResNet-18         | 3       | 0,882  | 0,713  | 0,892      | 0,792 |
+| EfficientNet-V2-S | 5       | 0,893  | 0,779  | 0,864      | 0,819 |
+| ConvNeXt-Tiny     | 2       | 0,900  | 0,597  | 0,981      | 0,742 |
+
+Comme les recalls diffèrent au seuil 0,5, la comparaison juste se fait **à recall égal**
+(environ 0,80), avec un seuil par modèle (recall / précision) :
+
+| Surface | ResNet-18 (seuil 0,3) | EfficientNet-V2-S (0,4) | ConvNeXt-Tiny (0,1) |
+| ------- | --------------------- | ----------------------- | ------------------- |
+| Global  | 0,794 / 0,811         | 0,809 / 0,822           | 0,803 / 0,849       |
+| Ponts   | 0,682 / 0,762         | 0,729 / 0,839           | 0,710 / 0,835       |
+| Routes  | 0,834 / 0,823         | 0,797 / 0,819           | 0,813 / 0,854       |
+| Murs    | 0,822 / 0,823         | 0,852 / 0,817           | 0,839 / 0,851       |
+
+Lecture prudente : les deux architectures récentes améliorent la détection sur les ponts,
+la surface la plus difficile ; chaque modèle n'a été entraîné qu'une fois et la validation
+contient peu de photos de ponts, donc l'écart reste à confirmer (plusieurs graines).
+Résultats détaillés dans `reports/metrics/` (CSV et JSON).
 
 ## Avancement
 
-| Phase | Contenu                                                      | État                            |
-| ----- | ------------------------------------------------------------ | -------------------------------- |
-| 1     | Données, index, exploration, DVC, CI minimal                | Fait                             |
-| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882) |
-| 3     | Modèles avancés, augmentation, Grad-CAM                    | À venir                         |
-| 4     | Export ONNX, API FastAPI, interface React                    | À venir                         |
-| 5     | Docker, docker-compose, CI/CD complet                        | À venir                         |
-| 6     | Rapport et soutenance                                        | À venir                         |
+| Phase | Contenu                                                      | État                                   |
+| ----- | ------------------------------------------------------------ | --------------------------------------- |
+| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                    |
+| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)        |
+| 3     | Modèles avancés, augmentation, Grad-CAM                    | En cours (3.1 faite, Grad-CAM à venir) |
+| 4     | Export ONNX, API FastAPI, interface React                    | À venir                                |
+| 5     | Docker, docker-compose, CI/CD complet                        | À venir                                |
+| 6     | Rapport et soutenance                                        | À venir                                |
 
 ## Référence
 
