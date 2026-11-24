@@ -1,0 +1,5 @@
+outs:
+- md5: 3549056cb5e2587e6c22c20f31277d6c
+  size: 111371187
+  hash: md5
+  path: convnext-tiny.onnx
