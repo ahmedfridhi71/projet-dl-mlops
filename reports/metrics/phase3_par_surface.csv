@@ -1,0 +1,4 @@
+﻿Modele;Seuil;Recall global;Precision globale;Recall Ponts (D);Recall Routes (P);Recall Murs (W);Precision Ponts (D);Precision Routes (P);Precision Murs (W)
+ResNet-18;0.3;0.794;0.811;0.682;0.834;0.822;0.762;0.823;0.823
+EfficientNet-V2-S;0.4;0.809;0.822;0.729;0.797;0.852;0.839;0.819;0.817
+ConvNeXt-Tiny;0.1;0.803;0.849;0.71;0.813;0.839;0.835;0.854;0.851
