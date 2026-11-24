@@ -1,0 +1,5 @@
+outs:
+- md5: a62d2d471e0e871bd033c58922d4923c
+  size: 111354491
+  hash: md5
+  path: convnext-tiny.pt
