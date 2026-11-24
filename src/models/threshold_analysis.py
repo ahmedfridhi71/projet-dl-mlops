@@ -9,6 +9,9 @@ from src.models.architecture import build_model
 from src.models.evaluate import predict
 from src.utils.metrics import compute_metrics
 
+SEUILS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+SEUILS_FINS = [0.005, 0.01, 0.02, 0.03, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]
+
 
 def main():
     p = argparse.ArgumentParser()
@@ -16,10 +19,14 @@ def main():
     p.add_argument("--model", default="resnet18",
                    choices=["resnet18", "efficientnet_v2_s", "convnext_tiny"])
     p.add_argument("--name", default=None)
+    p.add_argument("--fine", action="store_true",
+                   help="seuils plus bas (0.005 a 0.5), fichier *_seuils_fins.csv")
     args = p.parse_args()
 
     name = args.name or Path(args.weights).stem
-    out = Path("reports/metrics") / f"{name}_seuils.csv"
+    suffixe = "_seuils_fins" if args.fine else "_seuils"
+    out = Path("reports/metrics") / f"{name}{suffixe}.csv"
+    seuils = SEUILS_FINS if args.fine else SEUILS
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _, val_loader, _ = get_loaders(batch_size=64)
@@ -30,9 +37,9 @@ def main():
     rows = []
     print(f"Modele : {args.weights} ({args.model})")
     print(f"{'seuil':>6} {'recall':>8} {'precision':>10} {'f1':>7}")
-    for t in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+    for t in seuils:
         m = compute_metrics(y_true, y_score, threshold=t)
-        print(f"{t:>6.1f} {m['recall']:>8.3f} {m['precision']:>10.3f} {m['f1']:>7.3f}")
+        print(f"{t:>6.3f} {m['recall']:>8.3f} {m['precision']:>10.3f} {m['f1']:>7.3f}")
         rows.append({
             "seuil": t,
             "recall": round(float(m["recall"]), 4),
