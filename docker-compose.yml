@@ -1,0 +1,35 @@
+# Lance toute l'application : backend FastAPI + frontend React (nginx).
+#
+#   docker compose up --build
+#
+# Frontend : http://localhost        (port 80)
+# Backend  : http://localhost:8000   (docs : http://localhost:8000/docs)
+#
+# Les modèles ne sont pas dans Git : récupérez-les avant (dvc pull models/convnext-tiny.onnx.dvc models/convnext-tiny.pt.dvc).
+
+services:
+  backend:
+    build: ./backend
+    image: fissures-backend
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_ONNX_PATH: /models/convnext-tiny.onnx
+      MODEL_PT_PATH: /models/convnext-tiny.pt
+      THRESHOLD: "0.05"
+    volumes:
+      - ./models:/models:ro  # dossier models/ du dépôt, en lecture seule
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api  # nginx renvoie /api vers le service backend
+    image: fissures-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy  # attend que /health réponde (HEALTHCHECK du Dockerfile)
+    restart: unless-stopped
