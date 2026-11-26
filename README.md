@@ -212,14 +212,14 @@ prédiction sur CPU. Le résultat est identique à celui du backend lancé hors 
 
 ## Avancement
 
-| Phase | Contenu                                                      | État                                                                            |
-| ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                                                             |
-| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)                                                 |
-| 3     | Modèles avancés, augmentation, Grad-CAM                    | Fait (3.1, Grad-CAM, modèle final ConvNeXt-Tiny) ; augmentation 3.2 optionnelle |
-| 4     | Export ONNX, API FastAPI, interface React                    | Fait                                                                             |
-| 5     | Docker, docker-compose, CI/CD complet                        | En cours (Docker, compose et CI de tests faits ; DVC partagé à venir)          |
-| 6     | Rapport et soutenance                                        | À venir                                                                         |
+| Phase | Contenu                                                      | État                                                                                                       |
+| ----- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                                                                                        |
+| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)                                                                            |
+| 3     | Modèles avancés, augmentation, Grad-CAM                    | Fait (3.1, Grad-CAM, modèle final ConvNeXt-Tiny) ; augmentation 3.2 optionnelle                            |
+| 4     | Export ONNX, API FastAPI, interface React                    | Fait                                                                                                        |
+| 5     | Docker, docker-compose, CI/CD complet                        | Fait (images multi-stage, CI tests, construction et publication des images) ; remote DVC partagé optionnel |
+| 6     | Rapport et soutenance                                        | À venir                                                                                                    |
 
 ## Référence
 
