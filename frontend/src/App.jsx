@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import AnalyzeButton from "./components/AnalyzeButton.jsx";
+import EmptyState from "./components/EmptyState.jsx";
+import GradCamView from "./components/GradCamView.jsx";
 import Header from "./components/Header.jsx";
+import { IconError } from "./components/Icons.jsx";
 import ImageUploader from "./components/ImageUploader.jsx";
 import ResultCard from "./components/ResultCard.jsx";
-import GradCamView from "./components/GradCamView.jsx";
 import { getHealth, getMetadata, predict, predictVisualize } from "./services/api.js";
+
+const pourcent = (x) => `${(x * 100).toFixed(1)} %`;
 
 export default function App() {
   const [online, setOnline] = useState(null); // null = on ne sait pas encore
@@ -45,7 +50,7 @@ export default function App() {
       // 1) Résultat rapide (ONNX).
       const r = await predict(file);
       if (id !== analyseId.current) return;
-      setResult(r);
+      setResult({ ...r, id });
       setOnline(true);
     } catch (e) {
       if (id === analyseId.current) setError(e.message);
@@ -64,49 +69,71 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Halos de couleur en arrière-plan */}
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+        <div className="absolute -top-48 left-1/4 h-[32rem] w-[32rem] rounded-full bg-blue-600/20 blur-3xl" />
+        <div className="absolute -top-24 right-0 h-[28rem] w-[28rem] rounded-full bg-violet-600/20 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
+      </div>
+
       <Header online={online} metadata={metadata} />
 
-      <main className="mx-auto grid max-w-5xl gap-6 px-6 py-8 md:grid-cols-2">
-        <section className="flex flex-col gap-4">
-          <ImageUploader
-            file={file}
-            previewUrl={previewUrl}
-            onSelect={choisirImage}
-            onError={setError}
-            disabled={loading}
-          />
-          <button
-            onClick={analyser}
-            disabled={!file || loading}
-            className="rounded-lg bg-sky-600 px-4 py-3 font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {loading ? "Analyse en cours…" : "Analyser"}
-          </button>
-          {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
-          )}
-        </section>
+      <main className="mx-auto max-w-6xl px-6 pb-16 pt-12">
+        <div className="mb-10 max-w-2xl animate-fade-up">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+            Analysez une surface de{" "}
+            <span className="bg-linear-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
+              béton
+            </span>
+          </h1>
+          <p className="mt-4 text-lg leading-relaxed text-slate-400">
+            Déposez une photo : le modèle indique s'il voit une fissure, avec sa probabilité,
+            et montre où il a regardé.
+          </p>
+        </div>
 
-        <section className="flex flex-col gap-4">
-          {result ? (
-            <>
-              <ResultCard result={result} />
-              {cam.status !== "idle" && <GradCamView {...cam} />}
-            </>
-          ) : (
-            <div className="flex min-h-72 items-center justify-center rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-400">
-              Choisissez une image puis cliquez sur « Analyser ».
-            </div>
-          )}
-        </section>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="flex flex-col gap-4">
+            <ImageUploader
+              file={file}
+              previewUrl={previewUrl}
+              onSelect={choisirImage}
+              onError={setError}
+              disabled={loading}
+            />
+            <AnalyzeButton onClick={analyser} disabled={!file || loading} loading={loading} />
+            {error && (
+              <p role="alert" className="flex animate-fade-up items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                <IconError className="h-5 w-5 shrink-0" />
+                {error}
+              </p>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-6">
+            {result ? (
+              <>
+                <ResultCard key={result.id} result={result} />
+                {cam.status !== "idle" && <GradCamView {...cam} />}
+              </>
+            ) : (
+              <EmptyState />
+            )}
+          </section>
+        </div>
       </main>
 
       {metadata && (
-        <footer className="mx-auto max-w-5xl px-6 pb-8 text-xs text-slate-400">
-          Métriques au seuil {metadata.threshold} — validation : rappel{" "}
-          {metadata.metrics.validation.recall}, précision {metadata.metrics.validation.precision} · test :
-          rappel {metadata.metrics.test.recall}, précision {metadata.metrics.test.precision}
+        <footer className="border-t border-white/5">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-6 py-6 text-xs text-slate-500">
+            <span>Métriques au seuil {metadata.threshold}</span>
+            {[["Validation", metadata.metrics.validation], ["Test", metadata.metrics.test]].map(([nom, m]) => (
+              <span key={nom} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1">
+                <span className="font-medium text-slate-300">{nom}</span> · rappel {pourcent(m.recall)} · précision {pourcent(m.precision)} · F1 {pourcent(m.f1)}
+              </span>
+            ))}
+          </div>
         </footer>
       )}
     </div>
