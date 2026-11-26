@@ -1,0 +1,64 @@
+# Pipeline DVC : prepare -> train -> evaluate.
+# Lancer tout le pipeline : dvc repro        (voir docs/explication_pipeline_dvc.md)
+# "python -X utf8" : force l'UTF-8 pour que les messages avec ✅ s'affichent sous Windows.
+
+stages:
+  prepare:
+    # Index des images + split par photo, puis marquage des doublons (colonne "exclure").
+    cmd: python -X utf8 -m src.data.make_index && python -X utf8 -m src.data.flag_exclusions
+    deps:
+      - data/raw/SDNET2018_images
+      - src/data/make_index.py
+      - src/data/flag_exclusions.py
+    outs:
+      - data/processed/index.csv
+      - data/processed/split_report.txt
+
+  train:
+    # Entraînement (GPU conseillé : 20 à 30 minutes). Logge aussi un run dans mlflow.db.
+    cmd: >-
+      python -X utf8 -m src.models.train
+      --run-name ${train.run_name}
+      --model ${train.model}
+      --epochs ${train.epochs}
+      --batch-size ${train.batch_size}
+      --lr ${train.lr}
+      --num-workers ${train.num_workers}
+      --out models/pipeline/${train.run_name}.pt
+    deps:
+      - data/processed/index.csv
+      - data/raw/SDNET2018_images
+      - src/models/train.py
+      - src/models/architecture.py
+      - src/models/evaluate.py
+      - src/data/loaders.py
+      - src/data/dataset.py
+      - src/data/transforms.py
+      - src/utils/metrics.py
+    params:
+      - train
+    outs:
+      - models/pipeline/${train.run_name}.pt
+    plots:
+      - reports/metrics/${train.run_name}_epochs.csv:
+          cache: false
+
+  evaluate:
+    # Mesures sur le split val uniquement, au seuil de décision choisi.
+    cmd: >-
+      python -X utf8 -m src.models.export_metrics
+      --weights models/pipeline/${train.run_name}.pt
+      --model ${train.model}
+      --name ${train.run_name}
+      --split ${evaluate.split}
+      --threshold ${evaluate.threshold}
+    deps:
+      - models/pipeline/${train.run_name}.pt
+      - src/models/export_metrics.py
+      - src/models/evaluate.py
+      - src/utils/metrics.py
+    params:
+      - evaluate
+    metrics:
+      - reports/metrics/${train.run_name}_${evaluate.split}.json:
+          cache: false

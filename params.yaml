@@ -1,0 +1,26 @@
+# Paramètres du pipeline DVC (dvc.yaml).
+# Changer une valeur ici, puis lancer "dvc repro" : seuls les stages concernés sont relancés.
+
+prepare:
+  # Graine du découpage train/val/test. Information seulement :
+  # la valeur 42 est écrite en dur dans src/data/make_index.py.
+  seed: 42
+
+train:
+  model: convnext_tiny
+  epochs: 5
+  batch_size: 32
+  lr: 0.0001
+  num_workers: 4
+  # Nom unique : poids dans models/pipeline/, courbes dans reports/metrics/pipeline-*
+  run_name: pipeline-convnext-tiny
+
+evaluate:
+  # Toujours "val". Le split test a déjà servi pour la mesure finale : ne jamais le remettre ici.
+  split: val
+  threshold: 0.05
+
+ct:
+  # Réentraîner si la PR-AUC val du modèle en production descend sous cette valeur.
+  # Le modèle actuel est à environ 0.89-0.90 : 0.85 laisse une marge pour le bruit normal.
+  min_pr_auc: 0.85

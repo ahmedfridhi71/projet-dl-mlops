@@ -1,0 +1,28 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python -X utf8 -m src.data.make_index && python -X utf8 -m 
+      src.data.flag_exclusions
+    deps:
+    - path: data/raw/SDNET2018_images
+      hash: md5
+      md5: 57bf447eac27fc1402874715745b0b73.dir
+      size: 530772754
+      nfiles: 56092
+    - path: src/data/flag_exclusions.py
+      hash: md5
+      md5: 15151bfb0bd05a5eb11f10f98ef4a062
+      size: 2132
+    - path: src/data/make_index.py
+      hash: md5
+      md5: 0c15d1783a32a1799dcf42c3417acbb4
+      size: 2273
+    outs:
+    - path: data/processed/index.csv
+      hash: md5
+      md5: b393c36fda52cac5ac2db7fb9e9a1e06
+      size: 2032763
+    - path: data/processed/split_report.txt
+      hash: md5
+      md5: a04f67d1c387ecae086685d06d2260e2
+      size: 928
