@@ -18,12 +18,22 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            backend/requirements.txt
 
       - name: Installer les dépendances
         run: pip install -r requirements.txt
 
+      - name: Installer les dépendances du backend
+        run: |
+          # torch CPU d'abord (bien plus léger que la version CUDA), mêmes versions que le Dockerfile
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.11.0 torchvision==0.26.0
+          pip install -r backend/requirements.txt
+
       - name: Vérifier la syntaxe du code
-        run: python -m compileall -q src
+        run: python -m compileall -q src backend/app
 
       - name: Lancer les tests
-        run: pytest -q
+        # -rs : affiche les tests sautés et pourquoi (les modèles ne sont pas dans Git)
+        run: pytest -q -rs
