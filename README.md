@@ -221,7 +221,29 @@ prédiction sur CPU. Le résultat est identique à celui du backend lancé hors 
 | 5     | Docker, docker-compose, CI/CD complet                        | Fait (images multi-stage, CI tests, construction et publication des images) ; remote DVC partagé optionnel |
 | 6     | Rapport et soutenance                                        | À venir                                                                                                    |
 
-## Référence
+
+
+
+
+Déploiement avec les images publiées
+
+À chaque push sur `main`, la CI (`.github/workflows/docker-build.yml`) construit les deux images, vérifie que le backend démarre (`/health`), puis les publie sur le registre de GitHub (`ghcr.io`). Un tag `v*` (par exemple `v1.0`) publie aussi une image versionnée.
+
+Lancer la dernière version, sans rien reconstruire :
+
+```
+dvc pull models/convnext-tiny.onnx.dvc models/convnext-tiny.pt.dvc
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Choisir une version précise : `$env:VERSION="1.0"` avant la commande `up` (PowerShell).
+
+Limites : le déploiement n'est pas automatisé sur un serveur ; les poids du modèle ne sont pas dans les images (montés depuis `models/`).
+
+
+
+Référence
 
 Maguire, M., Dorafshan, S., Thomas, R. J. (2018). *SDNET2018: A concrete crack image
 dataset for machine learning applications*. Utah State University.
