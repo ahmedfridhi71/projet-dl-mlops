@@ -1,3 +1,5 @@
+
+
 # Détection de fissures du béton (SDNET2018)
 
 [![CI tests](https://github.com/ahmedfridhi71/projet-dl-mlops/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/ahmedfridhi71/projet-dl-mlops/actions/workflows/ci-tests.yml)
@@ -25,7 +27,7 @@ d'origine**, séparément pour chaque surface.
 ## Structure du projet
 
 ```
-.github/workflows/    CI (tests) et build Docker (à compléter)
+.github/workflows/    CI : tests (ci-tests.yml), construction et publication des images Docker (docker-build.yml)
 data/                 données, versionnées par DVC (non présentes sur GitHub)
 models/               poids des modèles, versionnés par DVC (fichiers .dvc dans Git)
 notebooks/            exploration du dataset
@@ -35,9 +37,10 @@ src/data/             index et découpage, contrôle qualité, Dataset, transfor
 src/models/           ResNet-18, EfficientNet-V2-S, ConvNeXt-Tiny, entraînement, seuils, Grad-CAM, export ONNX
 src/utils/            métriques de classification
 tests/                tests automatiques (pytest)
-backend/              API FastAPI (/health, /model/metadata, /predict, /predict/visualize), Dockerfile
-frontend/             interface React (upload, résultat, superposition Grad-CAM), Dockerfile nginx
-docker-compose.yml    lance le backend (port 8000) et le frontend (port 80)
+backend/              API FastAPI (/health, /model/metadata, /predict, /predict/visualize), Dockerfile multi-stage
+frontend/             interface React (upload, résultat, superposition Grad-CAM), Dockerfile nginx multi-stage
+docker-compose.yml        construit et lance le backend (port 8000) et le frontend (port 80)
+docker-compose.prod.yml   lance les images publiées sur ghcr.io, sans rien reconstruire
 pytest.ini            configuration des tests
 requirements.txt      dépendances : données, tests, DVC (utilisé par la CI)
 requirements-gpu.txt  PyTorch avec CUDA 12.8 et MLflow (entraînement)
@@ -68,7 +71,7 @@ et `data/processed.dvc`).
 ```
 
 > L'entrepôt DVC est pour l'instant **local** (`C:\Users\ahmed\dvc-storage`). Un
-> entrepôt partagé sera configuré en Phase 5. En attendant, le dataset peut être
+> entrepôt partagé reste à configurer. En attendant, le dataset peut être
 > téléchargé depuis le lien ci-dessus puis placé dans `data/raw/SDNET2018_images`.
 
 ## Commandes utiles
@@ -210,24 +213,13 @@ Mesure faite dans Docker sur une image de fissure de validation (7001-115.jpg) :
 probabilité 0,153 pour un seuil de 0,05, décision « fissure », environ 34 ms par
 prédiction sur CPU. Le résultat est identique à celui du backend lancé hors Docker.
 
-## Avancement
+## Déploiement avec les images publiées
 
-| Phase | Contenu                                                      | État                                                                                                       |
-| ----- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                                                                                        |
-| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)                                                                            |
-| 3     | Modèles avancés, augmentation, Grad-CAM                    | Fait (3.1, Grad-CAM, modèle final ConvNeXt-Tiny) ; augmentation 3.2 optionnelle                            |
-| 4     | Export ONNX, API FastAPI, interface React                    | Fait                                                                                                        |
-| 5     | Docker, docker-compose, CI/CD complet                        | Fait (images multi-stage, CI tests, construction et publication des images) ; remote DVC partagé optionnel |
-| 6     | Rapport et soutenance                                        | À venir                                                                                                    |
-
-
-
-
-
-Déploiement avec les images publiées
-
-À chaque push sur `main`, la CI (`.github/workflows/docker-build.yml`) construit les deux images, vérifie que le backend démarre (`/health`), puis les publie sur le registre de GitHub (`ghcr.io`). Un tag `v*` (par exemple `v1.0`) publie aussi une image versionnée.
+À chaque push sur `main`, la CI (`.github/workflows/docker-build.yml`) construit les deux
+images, vérifie que le backend démarre (`/health`), puis les publie sur le registre de
+GitHub : `ghcr.io/ahmedfridhi71/fissures-backend` et `ghcr.io/ahmedfridhi71/fissures-frontend`.
+Un tag au format `vX.Y.Z` (par exemple `v1.1.0`) publie aussi une image versionnée (`:1.1.0`).
+La première version publiée est `1.1.0`.
 
 Lancer la dernière version, sans rien reconstruire :
 
@@ -237,13 +229,23 @@ docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Choisir une version précise : `$env:VERSION="1.0"` avant la commande `up` (PowerShell).
+Choisir une version précise (PowerShell) : `$env:VERSION="1.1.0"` avant les commandes `pull` et `up`.
 
-Limites : le déploiement n'est pas automatisé sur un serveur ; les poids du modèle ne sont pas dans les images (montés depuis `models/`).
+Limites : le déploiement n'est pas automatisé sur un serveur ; les poids du modèle ne sont
+pas dans les images (montés depuis `models/`).
 
+## Avancement
 
+| Phase | Contenu                                                      | État                                                                                                                                                      |
+| ----- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                                                                                                                                       |
+| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)                                                                                                                           |
+| 3     | Modèles avancés, augmentation, Grad-CAM                    | Fait (3.1, Grad-CAM, modèle final ConvNeXt-Tiny) ; augmentation 3.2 optionnelle                                                                           |
+| 4     | Export ONNX, API FastAPI, interface React                    | Fait                                                                                                                                                       |
+| 5     | Docker, docker-compose, CI/CD complet                        | Fait (images multi-stage, CI tests, test de démarrage, publication versionnée, déploiement par docker-compose.prod.yml) ; remote DVC partagé optionnel |
+| 6     | Rapport et soutenance                                        | À venir                                                                                                                                                   |
 
-Référence
+## Référence
 
 Maguire, M., Dorafshan, S., Thomas, R. J. (2018). *SDNET2018: A concrete crack image
 dataset for machine learning applications*. Utah State University.
