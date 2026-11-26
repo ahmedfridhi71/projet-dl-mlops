@@ -32,11 +32,12 @@ notebooks/            exploration du dataset
 docs/                 pitch de mi-parcours (PDF)
 reports/              figures, rapport de qualité des données, résultats (reports/metrics)
 src/data/             index et découpage, contrôle qualité, Dataset, transforms, loaders
-src/models/           ResNet-18, EfficientNet-V2-S, ConvNeXt-Tiny, entraînement, seuils, comparaisons
+src/models/           ResNet-18, EfficientNet-V2-S, ConvNeXt-Tiny, entraînement, seuils, Grad-CAM, export ONNX
 src/utils/            métriques de classification
 tests/                tests automatiques (pytest)
-backend/              API FastAPI (à venir)
-frontend/             interface React (à venir)
+backend/              API FastAPI (/health, /model/metadata, /predict, /predict/visualize), Dockerfile
+frontend/             interface React (upload, résultat, superposition Grad-CAM), Dockerfile nginx
+docker-compose.yml    lance le backend (port 8000) et le frontend (port 80)
 pytest.ini            configuration des tests
 requirements.txt      dépendances : données, tests, DVC (utilisé par la CI)
 requirements-gpu.txt  PyTorch avec CUDA 12.8 et MLflow (entraînement)
@@ -101,8 +102,17 @@ et `data/processed.dvc`).
 .\.venv\Scripts\python.exe -m src.models.compare_archs
 .\.venv\Scripts\python.exe -m src.models.compare_surfaces
 
+# Grad-CAM : où le modèle regarde (figures dans reports/figures)
+.\.venv\Scripts\python.exe -m src.models.gradcam --weights models/convnext-tiny.pt --model convnext_tiny --name convnext-tiny --threshold 0.05
+
+# Exporter le modèle final en ONNX (models/convnext-tiny.onnx)
+.\.venv\Scripts\python.exe -m src.models.export_onnx
+
 # Ouvrir l'interface MLflow (http://127.0.0.1:5000)
 .\.venv\Scripts\mlflow.exe ui --backend-store-uri sqlite:///mlflow.db
+
+# Enregistrer les mesures finales dans MLflow (expérience fissures-beton-sdnet2018)
+.\.venv\Scripts\python.exe src\models\log_to_mlflow.py
 
 # Récupérer le modèle baseline versionné avec DVC
 .\.venv\Scripts\dvc.exe pull models\baseline.pt.dvc
@@ -123,7 +133,9 @@ et `data/processed.dvc`).
 Tous les modèles sont entraînés avec le même `train.py` (Adam lr 1e-4, batch 32, FP16,
 5 époques) : seule l'option `--model` change. La meilleure époque est choisie par la
 PR-AUC de validation. Chaque essai est suivi par MLflow (expérience `baseline-sdnet`) et
-écrit son historique dans `reports/metrics/<essai>_epochs.csv`.
+écrit son historique dans `reports/metrics/<essai>_epochs.csv`. Les mesures finales
+(fichiers JSON de `reports/metrics/`) sont rangées dans l'expérience
+`fissures-beton-sdnet2018`.
 
 ### Phase 2 : baseline et déséquilibre de classes
 
@@ -160,16 +172,54 @@ la surface la plus difficile ; chaque modèle n'a été entraîné qu'une fois e
 contient peu de photos de ponts, donc l'écart reste à confirmer (plusieurs graines).
 Résultats détaillés dans `reports/metrics/` (CSV et JSON).
 
+### Modèle final
+
+Modèle retenu : **ConvNeXt-Tiny**, seuil de décision **0,05** (classe « fissure » si la
+probabilité est supérieure ou égale à 0,05 ; les probabilités de ConvNeXt sont basses,
+d'où ce seuil). La règle de choix et ses limites sont dans `reports/decision_modele_final.md`.
+
+Mesure unique sur le jeu de test (jamais utilisé pour choisir) : recall 0,832,
+précision 0,642, PR-AUC 0,857. Limites : un seul entraînement, seuil sensible, ponts
+(surface la plus difficile).
+
+## Lancer l'application avec Docker
+
+Prérequis : Docker Desktop ouvert, et les poids du modèle récupérés avec DVC.
+
+```
+dvc pull models/convnext-tiny.onnx.dvc models/convnext-tiny.pt.dvc
+docker compose up --build -d
+```
+
+| Service  | Adresse               | Rôle                                      |
+| -------- | --------------------- | ------------------------------------------ |
+| frontend | http://localhost      | interface React (nginx, proxy /api)        |
+| backend  | http://127.0.0.1:8000 | API FastAPI : ONNX Runtime CPU et Grad-CAM |
+
+Vérifier et arrêter :
+
+```
+docker compose ps
+curl.exe http://127.0.0.1:8000/health
+docker compose down
+```
+
+Les modèles ne sont pas dans les images : ils sont montés en volume depuis `models/`.
+
+Mesure faite dans Docker sur une image de fissure de validation (7001-115.jpg) :
+probabilité 0,153 pour un seuil de 0,05, décision « fissure », environ 34 ms par
+prédiction sur CPU. Le résultat est identique à celui du backend lancé hors Docker.
+
 ## Avancement
 
-| Phase | Contenu                                                      | État                                   |
-| ----- | ------------------------------------------------------------ | --------------------------------------- |
-| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                    |
-| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)        |
-| 3     | Modèles avancés, augmentation, Grad-CAM                    | En cours (3.1 faite, Grad-CAM à venir) |
-| 4     | Export ONNX, API FastAPI, interface React                    | À venir                                |
-| 5     | Docker, docker-compose, CI/CD complet                        | À venir                                |
-| 6     | Rapport et soutenance                                        | À venir                                |
+| Phase | Contenu                                                      | État                                                                            |
+| ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| 1     | Données, index, exploration, DVC, CI minimal                | Fait                                                                             |
+| 2     | Chargement des données, métriques, baseline ResNet, MLflow | Fait (baseline PR-AUC val 0,882)                                                 |
+| 3     | Modèles avancés, augmentation, Grad-CAM                    | Fait (3.1, Grad-CAM, modèle final ConvNeXt-Tiny) ; augmentation 3.2 optionnelle |
+| 4     | Export ONNX, API FastAPI, interface React                    | Fait                                                                             |
+| 5     | Docker, docker-compose, CI/CD complet                        | En cours (Docker, compose et CI de tests faits ; DVC partagé à venir)          |
+| 6     | Rapport et soutenance                                        | À venir                                                                         |
 
 ## Référence
 
