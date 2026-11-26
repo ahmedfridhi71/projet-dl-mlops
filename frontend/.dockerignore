@@ -1,0 +1,4 @@
+# Ne pas copier dans l'image : dépendances Windows et build local.
+node_modules
+dist
+.env
