@@ -17,6 +17,11 @@ Chaque fois qu'on enregistre un modèle, MLflow crée une **nouvelle version** :
 
 Pour chaque version, le script garde aussi la **PR-AUC val** (tag `val_pr_auc`) et le seuil.
 
+Cette PR-AUC est celle de la **meilleure époque, pas de la dernière**.
+En effet, `train.py` sauvegarde les poids de la meilleure époque. Le score affiché doit donc correspondre à ces poids-là.
+Le script lit `best_val_pr_auc`. S'il manque, il prend le maximum de l'historique de `val_pr_auc`.
+Exemple : pour `convnext-tiny`, la meilleure époque (la 2) donne 0.9000, alors que la dernière (la 5) donne 0.8861.
+
 ## 3. Les alias
 
 Un **alias**, c'est une étiquette posée sur **une** version. Nous en utilisons deux :

@@ -26,8 +26,6 @@ MODEL_NAME = "detection-fissures"
 EXPERIMENT = "fissures-beton-sdnet2018"
 ARTIFACT_DIR = "model"  # dossier des artefacts (.pt, .onnx) dans le run
 STAGING, PRODUCTION = "staging", "production"
-# Où chercher la PR-AUC val dans un run existant, dans cet ordre
-PR_AUC_KEYS = ["val_pr_auc", "best_val_pr_auc", "global.pr_auc"]
 
 
 class RegistryError(Exception):
@@ -123,27 +121,39 @@ def register_from_run(client, run_id, name=MODEL_NAME):
         raise RegistryError(
             f"Le run {run_id} n'a pas de .pt ni de .onnx dans le dossier '{ARTIFACT_DIR}'. "
             "Utilisez plutôt --pt (et --onnx, --metrics-json).")
-    pr_auc = run_pr_auc(run)
+    pr_auc = run_pr_auc(client, run)
     threshold = run.data.params.get("threshold")
     return _create_version(client, name, run, pr_auc, threshold,
                            description=f"Run source : {run.info.run_name}")
 
 
-def run_pr_auc(run):
-    for k in PR_AUC_KEYS:
-        if k in run.data.metrics:
-            return float(run.data.metrics[k])
+def run_pr_auc(client, run):
+    """PR-AUC val du MEILLEUR modèle du run (celui dont les poids sont sauvegardés).
+
+    1. best_val_pr_auc (meilleure époque) ;
+    2. sinon le maximum de l'historique de val_pr_auc (jamais la dernière époque) ;
+    3. sinon global.pr_auc (une seule mesure, faite par export_metrics).
+    """
+    metrics = run.data.metrics
+    if "best_val_pr_auc" in metrics:
+        return float(metrics["best_val_pr_auc"])
+    if "val_pr_auc" in metrics:
+        historique = client.get_metric_history(run.info.run_id, "val_pr_auc")
+        return max(float(m.value) for m in historique)
+    if "global.pr_auc" in metrics:
+        return float(metrics["global.pr_auc"])
     return None
 
 
 def version_pr_auc(client, mv):
-    """PR-AUC val d'une version : son tag, sinon les métriques de son run."""
-    if "val_pr_auc" in mv.tags:
-        return float(mv.tags["val_pr_auc"])
+    """PR-AUC val d'une version : lue dans son run, sinon dans son tag val_pr_auc."""
     try:
-        return run_pr_auc(client.get_run(mv.run_id))
+        pr_auc = run_pr_auc(client, client.get_run(mv.run_id))
     except MlflowException:
-        return None
+        pr_auc = None
+    if pr_auc is None and "val_pr_auc" in mv.tags:
+        pr_auc = float(mv.tags["val_pr_auc"])
+    return pr_auc
 
 
 def _versions(client, name):

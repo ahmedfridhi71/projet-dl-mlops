@@ -50,6 +50,36 @@ def test_register_cree_un_run_et_une_version(client, fichiers):
     assert noms == {"model/faux.pt", "model/faux.onnx"}
 
 
+def _faux_run_entrainement(client, fichiers, historique, best=None):
+    """Faux run comme train.py : val_pr_auc par époque, poids dans model/."""
+    pt, _, _ = fichiers
+    exp_id = client.get_experiment_by_name(rm.EXPERIMENT).experiment_id
+    run_id = client.create_run(exp_id, run_name="faux-train").info.run_id
+    for epoque, valeur in enumerate(historique, 1):
+        client.log_metric(run_id, "val_pr_auc", valeur, step=epoque)
+    if best is not None:
+        client.log_metric(run_id, "best_val_pr_auc", best)
+    client.log_artifact(run_id, str(pt), rm.ARTIFACT_DIR)
+    client.set_terminated(run_id, "FINISHED")
+    return run_id
+
+
+def test_tag_meilleure_epoque_avec_best(client, fichiers):
+    # Meilleure époque : 0.92 (époque 2). Dernière époque : 0.85.
+    run_id = _faux_run_entrainement(client, fichiers, [0.80, 0.92, 0.85], best=0.92)
+    mv = rm.register_from_run(client, run_id)
+    assert mv.tags["val_pr_auc"] == "0.9200"
+    assert rm.list_versions(client)[0]["val_pr_auc"] == 0.92
+
+
+def test_tag_meilleure_epoque_sans_best(client, fichiers):
+    # Pas de best_val_pr_auc : on prend le maximum de l'historique, pas la dernière valeur.
+    run_id = _faux_run_entrainement(client, fichiers, [0.80, 0.92, 0.85])
+    mv = rm.register_from_run(client, run_id)
+    assert mv.tags["val_pr_auc"] == "0.9200"
+    assert rm.list_versions(client)[0]["val_pr_auc"] == 0.92
+
+
 def test_register_refuse_le_split_test(client, fichiers, tmp_path):
     pt, onnx, _ = fichiers
     mesure_test = tmp_path / "faux_test.json"
