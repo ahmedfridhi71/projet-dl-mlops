@@ -18,7 +18,23 @@ def test_images_suivies_par_dvc():
     assert out["nfiles"] == 56092, "Le dataset doit contenir 56 092 images"
 
 
+def _read_yaml(relative_path):
+    """Lit un fichier YAML du dépôt (dvc.yaml, dvc.lock)."""
+    fichier = ROOT / relative_path
+    assert fichier.exists(), f"Fichier introuvable : {relative_path}"
+    return yaml.safe_load(fichier.read_text(encoding="utf-8"))
+
+
 def test_processed_suivi_par_dvc():
-    out = _read_dvc("data/processed.dvc")
-    assert out["path"] == "processed"
-    assert out["nfiles"] >= 1
+    """data/processed est produit par le stage "prepare" du pipeline DVC."""
+    attendues = ["data/processed/index.csv", "data/processed/split_report.txt"]
+
+    stage = _read_yaml("dvc.yaml")["stages"].get("prepare")
+    assert stage is not None, "Le stage prepare manque dans dvc.yaml"
+    assert stage["outs"] == attendues
+
+    verrou = _read_yaml("dvc.lock")["stages"].get("prepare")
+    assert verrou is not None, "Le stage prepare manque dans dvc.lock"
+    empreintes = {out["path"]: out.get("md5") for out in verrou["outs"]}
+    for chemin in attendues:
+        assert empreintes.get(chemin), f"Pas d'empreinte md5 pour {chemin} dans dvc.lock"
